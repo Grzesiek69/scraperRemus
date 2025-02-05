@@ -73,14 +73,14 @@ public class ProductSaver {
                         row.createCell(7).setCellValue(variant.getOptionName());
                     }
                 } else if (i >= variantCount && i == 0 && variantCount == 0) {
-                    // Brak wariantów – zapis "default" tylko przy pierwszym zdjęciu
-                    row.createCell(0).setCellValue(product.getUrl());
-                    row.createCell(1).setCellValue(product.getTitle());
-                    row.createCell(2).setCellValue(product.getPrice());
-                    row.createCell(3).setCellValue(product.getCurrency());
-                    row.createCell(4).setCellValue(product.getCarModel());
-                    row.createCell(5).setCellValue(product.getDescription());
-                    row.createCell(7).setCellValue("default");
+//                    // Brak wariantów – zapis "default" tylko przy pierwszym zdjęciu
+//                    row.createCell(0).setCellValue(product.getUrl());
+//                    row.createCell(1).setCellValue(product.getTitle());
+//                    row.createCell(2).setCellValue(product.getPrice());
+//                    row.createCell(3).setCellValue(product.getCurrency());
+//                    row.createCell(4).setCellValue(product.getCarModel());
+//                    row.createCell(5).setCellValue(product.getDescription());
+//                    row.createCell(7).setCellValue("default");
                 }
             }
 

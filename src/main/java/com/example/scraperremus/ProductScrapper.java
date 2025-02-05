@@ -14,9 +14,12 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -69,7 +72,7 @@ public class ProductScrapper {
      */
     public static Product getProduct(String url) {
         ChromeOptions options = new ChromeOptions();
-//        options.addArguments("--headless");
+        options.addArguments("--headless");
         WebDriver driver = new ChromeDriver(options);
         try {
             driver.get(url);
@@ -81,6 +84,24 @@ public class ProductScrapper {
             Product product = new Product();
             product.setUrl(url);
 
+            String pageSource2 = "";
+            URL fullUrl = new URL(url);
+            HttpURLConnection conn = (HttpURLConnection) fullUrl.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("Accept", "text/html");
+
+            int responseCode = conn.getResponseCode();
+            if (responseCode == 200) {
+                Scanner scanner = new Scanner(fullUrl.openStream());
+                StringBuilder response = new StringBuilder();
+                while (scanner.hasNext()) {
+                    response.append(scanner.nextLine());
+                }
+                scanner.close();
+                pageSource2 = response.toString();
+            }
+
             // Tytuł
             String title = doc.select("h1.page-title").text();
             if (title == null || title.isEmpty()) {
@@ -90,7 +111,8 @@ public class ProductScrapper {
                 title = "No title available";
             }
             product.setTitle(title);
-// Ekstrakcja SKU z <small class="text-muted"> (np. "SKU: 081023 1510-3")
+
+            // Ekstrakcja SKU z <small class="text-muted"> (np. "SKU: 081023 1510-3")
             Element skuElem = doc.select("h1.page-title small.text-muted").first();
             if (skuElem != null) {
                 String skuText = skuElem.text(); // np. "SKU: 081023 1510-3"
@@ -99,29 +121,34 @@ public class ProductScrapper {
             } else {
                 product.setSku("");
             }
+
             // Cena – przyjmujemy cenę z elementu <span class="price">
             Element priceElement = doc.select("span.price").first();
             String price = (priceElement != null) ? priceElement.text() : "No price available";
-// Wyłuskujemy finalPrice z pageSource – szukamy fragmentu JSON zawierającego "finalPrice": {"amount": ...}
+
+            // Wyłuskujemy finalPrice z pageSource – szukamy fragmentu JSON zawierającego "finalPrice": {"amount": ...}
             String finalPriceStr = "";
             try {
                 Pattern pattern = Pattern.compile(
-                        "\"finalPrice\"\\s*:\\s*\\{\\s*\"amount\"\\s*:\\s*([0-9]{3,5})(?:\\.\\d+)?\\s*}\\s*}\\s*,\\s*\"priceType\"\\s*:\\s*\"1\""
-                );             Matcher matcher = pattern.matcher(pageSource);
-                System.out.println("matcher: " + matcher.find());
+                        "\"finalPrice\"\\s*:\\s*\\{\\s*\"amount\"\\s*:\\s*([0-9]{2,7})\\.[0-9]+\\s*}\\s*}\\s*,\\s*\"priceType\"\\s*:\\s*\"1\""
+                );
+                Matcher matcher = pattern.matcher(pageSource2);
+
                 if (matcher.find()) {
-                    finalPriceStr = matcher.group(1); // np. "1500.000001"
+                    finalPriceStr = matcher.group(1); // Pobiera tylko liczbę całkowitą przed kropką
+                    System.out.println("Znaleziono finalPrice: " + finalPriceStr);
+                } else {
+                    System.out.println("Nie znaleziono wartości finalPrice.");
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
             if (!finalPriceStr.isEmpty()) {
-                // Ustawiamy cenę bazową jako finalPrice (dodajemy symbol waluty, jeśli chcesz)
                 product.setPrice("€" + finalPriceStr);
             } else {
-                product.setPrice(price);
+                product.setPrice(price); // Jeśli nie udało się znaleźć ceny, użyj domyślnej
             }
-
 
             // Waluta
             String currency = price.contains("€") ? "EUR" : "No currency available";
@@ -198,27 +225,6 @@ public class ProductScrapper {
             }
 
             product.setImagesLinks(images);
-
-//            // Dla celów Shopify przypisujemy opcje – przykładowe dane; dostosuj do swoich potrzeb.
-//            List<OptionValue> values1 = new ArrayList<>();
-//            values1.add(new OptionValue("Srebrny", 0.0));
-//            values1.add(new OptionValue("Tytanowy niebieski", 0.0));
-//            values1.add(new OptionValue("Czarny połysk", 0.0));
-//            values1.add(new OptionValue("Złoty", 0.0));
-//            values1.add(new OptionValue("Carbon FIber", 0.0));
-//            groups.add(new OptionGroup("Kolor końcówek", values1));
-//
-//            List<OptionValue> values2 = new ArrayList<>();
-//            values2.add(new OptionValue("Tak", 1620.0));
-//            values2.add(new OptionValue("Nie", 0.0));
-//            groups.add(new OptionGroup("Dyfuzor Carbon Fiber", values2));
-//
-//            List<OptionValue> values3 = new ArrayList<>();
-//            values3.add(new OptionValue("Tak", 0.0));
-//            values3.add(new OptionValue("Nie", 0.0));
-//            groups.add(new OptionGroup("Fi Pro zdalne sterowanie", values3));
-//
-//            product.setOptions(groups);
 
             System.out.println(product);
             return product;

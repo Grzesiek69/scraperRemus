@@ -13,7 +13,7 @@ public class ShopifyBatchSaver {
     private static final String VENDOR = "Remus";
     private static final String PRODUCT_CATEGORY = "Pojazdy i części > Akcesoria i części do pojazdów > Części do pojazdów silnikowych > Elementy układu wydechowego";
     private static final String TYPE = "exhaust";
-    private static final String TAGS = "";
+    private static final String TAGS = "Remus";
     private static final String PUBLISHED = "TRUE";
     private static final String VARIANT_INVENTORY_POLICY = "deny";
     private static final String VARIANT_FULFILLMENT_SERVICE = "manual";
@@ -88,7 +88,7 @@ public class ShopifyBatchSaver {
                             }
                         }
                     }
-                    double variantPrice = basePrice + optionsSum;
+                    double variantPrice = (basePrice + optionsSum) / 1.2 * 1.23 * 4.2;
                     String variantPriceStr = priceFormat.format(variantPrice);
 
                     // SKU: tylko w pierwszym wierszu używamy SKU z produktu
@@ -106,6 +106,11 @@ public class ShopifyBatchSaver {
                     String typeCell = firstRow ? TYPE : "";
                     String tagsCell = firstRow ? TAGS : "";
                     String publishedCell = firstRow ? PUBLISHED : "";
+                    String variantInventoryPolicy =  VARIANT_INVENTORY_POLICY;
+                    String variantFulfilment =  VARIANT_FULFILLMENT_SERVICE;
+                    String variantReqShip = VARIANT_REQUIRES_SHIPPING;
+                    String giftCard = firstRow ? GIFT_CARD : "";
+                    String status = firstRow ? STATUS : "";
 
                     // Opcje Linked To – puste
                     String option1Linked = "";
@@ -124,30 +129,31 @@ public class ShopifyBatchSaver {
                             escapeCsv(typeCell) + "," +
                             escapeCsv(tagsCell) + "," +
                             escapeCsv(publishedCell) + "," +
-                            escapeCsv(option1Name) + "," +
+                            (!option1Value.equals("") ? escapeCsv(option1Name) : "" ) + "," +
                             escapeCsv(option1Value) + "," +
                             escapeCsv(option1Linked) + "," +
-                            escapeCsv(option2Name) + "," +
+                            (!option1Value.equals("") ? escapeCsv(option2Name) : "" ) + "," +
                             escapeCsv(option2Value) + "," +
                             escapeCsv(option2Linked) + "," +
-                            escapeCsv(option3Name) + "," +
+                            (!option1Value.equals("") ? escapeCsv(option3Name): "" )  + "," +
                             escapeCsv(option3Value) + "," +
                             escapeCsv(option3Linked) + "," +
                             escapeCsv(variantSKU) + "," +
                             escapeCsv(variantGrams) + "," +
                             escapeCsv(variantInventoryQty) + "," +
-                            escapeCsv(VARIANT_INVENTORY_POLICY) + "," +
-                            escapeCsv(VARIANT_FULFILLMENT_SERVICE) + "," +
+                            escapeCsv(variantInventoryPolicy) + "," +
+                            escapeCsv(variantFulfilment) + "," +
                             escapeCsv(variantPriceStr) + "," +
-                            escapeCsv(VARIANT_REQUIRES_SHIPPING) + "," +
-                            escapeCsv(VARIANT_TAXABLE) + "," +
+                            escapeCsv(variantReqShip) + "," +
+                            escapeCsv(!imageSrcCell.equals("") ? VARIANT_TAXABLE : "") + "," +
                             escapeCsv(imageSrcCell) + "," +
-                            i + "," +  // Image Position – tylko tam gdzie obraz istnieje
-                            escapeCsv(GIFT_CARD) + "," +
-                            escapeCsv(STATUS);
+                            (!imageSrcCell.equals("") ? i + 1  + "," : ",") +
+                            escapeCsv(giftCard) + "," +
+                            escapeCsv(status);
                     pw.println(row);
                     firstRow = false;
                 }
+
                 System.out.println("Plik CSV zapisany do: " + outputFilePath);
             }} catch(IOException e){
                 e.printStackTrace();
