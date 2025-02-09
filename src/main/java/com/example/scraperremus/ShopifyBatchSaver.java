@@ -12,10 +12,10 @@ public class ShopifyBatchSaver {
     // Stałe wartości, które będą takie same dla wszystkich produktów
     private static final String VENDOR = "Remus";
     private static final String PRODUCT_CATEGORY = "Pojazdy i części > Akcesoria i części do pojazdów > Części do pojazdów silnikowych > Elementy układu wydechowego";
-    private static final String TYPE = "exhaust";
-    private static final String TAGS = "Remus";
+    private static final String TYPE = "Układ wydechowy";
+    private static final String TAGS = "Remus, BMW, BMW M2 G87, Układ wydechowy";
     private static final String PUBLISHED = "TRUE";
-    private static final String VARIANT_INVENTORY_POLICY = "deny";
+    private static final String VARIANT_INVENTORY_POLICY = "Continue";
     private static final String VARIANT_FULFILLMENT_SERVICE = "manual";
     private static final String VARIANT_REQUIRES_SHIPPING = "TRUE";
     private static final String VARIANT_TAXABLE = "FALSE";
@@ -88,7 +88,7 @@ public class ShopifyBatchSaver {
                             }
                         }
                     }
-                    double variantPrice = (basePrice + optionsSum) / 1.2 * 1.23 * 4.2;
+                    double variantPrice = (basePrice + optionsSum) / 1.2 * 1.23 * 4.4;
                     String variantPriceStr = priceFormat.format(variantPrice);
 
                     // SKU: tylko w pierwszym wierszu używamy SKU z produktu
@@ -106,8 +106,8 @@ public class ShopifyBatchSaver {
                     String typeCell = firstRow ? TYPE : "";
                     String tagsCell = firstRow ? TAGS : "";
                     String publishedCell = firstRow ? PUBLISHED : "";
-                    String variantInventoryPolicy =  VARIANT_INVENTORY_POLICY;
-                    String variantFulfilment =  VARIANT_FULFILLMENT_SERVICE;
+                    String variantInventoryPolicy = VARIANT_INVENTORY_POLICY;
+                    String variantFulfilment = VARIANT_FULFILLMENT_SERVICE;
                     String variantReqShip = VARIANT_REQUIRES_SHIPPING;
                     String giftCard = firstRow ? GIFT_CARD : "";
                     String status = firstRow ? STATUS : "";
@@ -129,25 +129,27 @@ public class ShopifyBatchSaver {
                             escapeCsv(typeCell) + "," +
                             escapeCsv(tagsCell) + "," +
                             escapeCsv(publishedCell) + "," +
-                            (!option1Value.equals("") ? escapeCsv(option1Name) : "" ) + "," +
+                            (!option1Value.equals("") ? escapeCsv(option1Name) : "") + "," +
                             escapeCsv(option1Value) + "," +
                             escapeCsv(option1Linked) + "," +
-                            (!option1Value.equals("") ? escapeCsv(option2Name) : "" ) + "," +
+                            (!option1Value.equals("") ? escapeCsv(option2Name) : "") + "," +
                             escapeCsv(option2Value) + "," +
                             escapeCsv(option2Linked) + "," +
-                            (!option1Value.equals("") ? escapeCsv(option3Name): "" )  + "," +
+                            (!option1Value.equals("") ? escapeCsv(option3Name) : "") + "," +
                             escapeCsv(option3Value) + "," +
                             escapeCsv(option3Linked) + "," +
                             escapeCsv(variantSKU) + "," +
-                            escapeCsv(variantGrams) + "," +
-                            escapeCsv(variantInventoryQty) + "," +
-                            escapeCsv(variantInventoryPolicy) + "," +
-                            escapeCsv(variantFulfilment) + "," +
-                            escapeCsv(variantPriceStr) + "," +
-                            escapeCsv(variantReqShip) + "," +
-                            escapeCsv(!imageSrcCell.equals("") ? VARIANT_TAXABLE : "") + "," +
+
+                            (!option1Value.equals("") || firstRow ? escapeCsv(variantGrams) : "") + "," +
+                            (!option1Value.equals("") || firstRow ? escapeCsv(variantInventoryQty) : "") + "," +
+                            (!option1Value.equals("") || firstRow ? escapeCsv(variantInventoryPolicy) : "") + "," +
+                            (!option1Value.equals("") || firstRow ? escapeCsv(variantFulfilment) : "") + "," +
+                            (!option1Value.equals("") || firstRow ? escapeCsv(variantPriceStr) : "") + "," +
+                            (!option1Value.equals("") || firstRow ? escapeCsv(variantReqShip) : "") + "," +
+
+                            escapeCsv(!option1Value.equals("") || firstRow ? VARIANT_TAXABLE : "") + "," +
                             escapeCsv(imageSrcCell) + "," +
-                            (!imageSrcCell.equals("") ? i + 1  + "," : ",") +
+                            (!imageSrcCell.equals("") ? i + 1 + "," : ",") +
                             escapeCsv(giftCard) + "," +
                             escapeCsv(status);
                     pw.println(row);
@@ -155,45 +157,46 @@ public class ShopifyBatchSaver {
                 }
 
                 System.out.println("Plik CSV zapisany do: " + outputFilePath);
-            }} catch(IOException e){
-                e.printStackTrace();
             }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
     }
 
-        private static List<List<OptionValue>> generateCombinations (List < OptionGroup > groups) {
-            List<List<OptionValue>> result = new ArrayList<>();
-            generateCombinationsRecursive(groups, 0, new ArrayList<>(), result);
-            return result;
-        }
+    private static List<List<OptionValue>> generateCombinations(List<OptionGroup> groups) {
+        List<List<OptionValue>> result = new ArrayList<>();
+        generateCombinationsRecursive(groups, 0, new ArrayList<>(), result);
+        return result;
+    }
 
-        private static void generateCombinationsRecursive (List < OptionGroup > groups,int index, List<
-        OptionValue > current, List < List < OptionValue >> result){
-            if (index == groups.size()) {
-                result.add(new ArrayList<>(current));
-                return;
-            }
-            for (OptionValue ov : groups.get(index).getValues()) {
-                current.add(ov);
-                generateCombinationsRecursive(groups, index + 1, current, result);
-                current.remove(current.size() - 1);
-            }
+    private static void generateCombinationsRecursive(List<OptionGroup> groups, int index, List<
+            OptionValue> current, List<List<OptionValue>> result) {
+        if (index == groups.size()) {
+            result.add(new ArrayList<>(current));
+            return;
         }
-
-        private static String slugify (String text){
-            if (text == null) return "";
-            return text.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
-        }
-
-        private static String escapeCsv (String text){
-            if (text == null) return "";
-            if (text.contains(",") || text.contains("\"") || text.contains("\n")) {
-                text = text.replace("\"", "\"\"");
-                return "\"" + text + "\"";
-            }
-            return text;
+        for (OptionValue ov : groups.get(index).getValues()) {
+            current.add(ov);
+            generateCombinationsRecursive(groups, index + 1, current, result);
+            current.remove(current.size() - 1);
         }
     }
+
+    private static String slugify(String text) {
+        if (text == null) return "";
+        return text.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+    }
+
+    private static String escapeCsv(String text) {
+        if (text == null) return "";
+        if (text.contains(",") || text.contains("\"") || text.contains("\n")) {
+            text = text.replace("\"", "\"\"");
+            return "\"" + text + "\"";
+        }
+        return text;
+    }
+}
 
 
 

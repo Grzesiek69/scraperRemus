@@ -166,21 +166,49 @@ public class ProductScrapper {
             }
             product.setDescription(description);
 
-// Zamiast wariantów – budujemy listę opcji (OptionGroup) na podstawie formularza
+            Element additionalElem = doc.getElementById("additional");
+            if (additionalElem != null) {
+                // Wyciągamy wszystkie wiersze z tabeli o id "product-attribute-specs-table"
+                Elements rows = additionalElem.select("table#product-attribute-specs-table tr");
+                StringBuilder moreInfoBuilder = new StringBuilder();
+                for (Element row : rows) {
+                    // Pobieramy etykietę i dane
+                    String label = row.select("th").text();
+                    String data = row.select("td").text();
+                    if (!label.isEmpty() && !data.isEmpty()) {
+                        moreInfoBuilder.append(label).append(": ").append(data).append("\n");
+                    }
+                }
+                // Jeśli udało się coś pobrać, doklejamy dwie puste linie i wynik do opisu produktu
+                if (!moreInfoBuilder.isEmpty()) {
+                    String updatedDescription = product.getDescription() + "\n\n" + moreInfoBuilder.toString();
+                    product.setDescription(updatedDescription);
+                }
+            }
+
+// Parsujemy cenę bazową (wcześniej ustawioną, np. z CDP lub z DOM)
+            double basePrice = 0.0;
+            try {
+                String priceStr = product.getPrice().replace("€", "").replace(",", "").trim();
+                if (!priceStr.isEmpty()) {
+                    basePrice = Double.parseDouble(priceStr);
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
+// Budujemy listę opcji – jeśli w danej grupie (zakładce) jest tylko jedna opcja, dodajemy jej cenę do ceny bazowej.
             List<OptionGroup> groups = new ArrayList<>();
             Element addToCartForm = doc.getElementById("product_addtocart_form");
             if (addToCartForm != null) {
                 Elements optionDivs = addToCartForm.select("div.field.option");
                 for (Element optionDiv : optionDivs) {
                     String groupTitle = optionDiv.select("label h5").text();
-                    if (groupTitle == null || groupTitle.isEmpty()) continue;
-                    List<OptionValue> values = new ArrayList<>();
+                    if (groupTitle.isEmpty()) continue;
                     Elements choices = optionDiv.select("div.field.choice");
-                    for (Element choice : choices) {
-                        String selectionName = choice.select("span.options-label .product-name").text();
-                        if (selectionName == null || selectionName.isEmpty()) {
-                            selectionName = choice.text();
-                        }
+                    if (choices.size() == 1) {
+                        // Jeśli tylko jedna opcja – pomijamy tworzenie grupy, ale dodajemy jej cenę do ceny bazowej.
+                        Element choice = choices.first();
                         Element priceElem = choice.select("span.price-wrapper span.price").first();
                         String selectionPrice = (priceElem != null) ? priceElem.text() : "";
                         double priceAdj = 0.0;
@@ -192,12 +220,37 @@ public class ProductScrapper {
                         } catch (Exception ex) {
                             ex.printStackTrace();
                         }
-                        values.add(new OptionValue(selectionName, priceAdj));
+                        basePrice += priceAdj;
+                    } else {
+                        // W przeciwnym razie – więcej niż jedna opcja, więc budujemy OptionGroup
+                        List<OptionValue> values = new ArrayList<>();
+                        for (Element choice : choices) {
+                            String selectionName = choice.select("span.options-label .product-name").text();
+                            if (selectionName == null || selectionName.isEmpty()) {
+                                selectionName = choice.text();
+                            }
+                            Element priceElem = choice.select("span.price-wrapper span.price").first();
+                            String selectionPrice = (priceElem != null) ? priceElem.text() : "";
+                            double priceAdj = 0.0;
+                            try {
+                                String p = selectionPrice.replace("€", "").replace(",", "").trim();
+                                if (!p.isEmpty()) {
+                                    priceAdj = Double.parseDouble(p);
+                                }
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                            values.add(new OptionValue(selectionName + "(+" + ((int) priceAdj /1.2 * 1.23) * 4.4 +")", priceAdj));
+                        }
+                        groups.add(new OptionGroup(groupTitle, values));
                     }
-                    groups.add(new OptionGroup(groupTitle, values));
                 }
             }
             product.setOptions(groups);
+
+// Aktualizujemy cenę produktu – formatujemy cenę bazową (tutaj używam prostego formatu, możesz użyć DecimalFormat)
+            String newPrice = String.valueOf(basePrice);
+            product.setPrice(newPrice);
 
             // Zdjęcia – pobieramy pełnowymiarowe zdjęcia z atrybutu data-img
             List<String> images = new ArrayList<>();
